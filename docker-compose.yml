@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  litellm:
+    image: docker.litellm.ai/berriai/litellm-database:main-stable
+    ports:
+      - "80:4000"
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml
+    environment:
+      DATABASE_URL: postgresql://litellm:litellm@db:5432/litellm
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION_NAME: us-east-1
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+    command: --config /app/config.yaml --port 4000 --detailed_debug
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: litellm
+      POSTGRES_DB: litellm
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
